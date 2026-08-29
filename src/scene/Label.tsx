@@ -35,6 +35,10 @@ const cache = new Map<string, Entry>();
 /** Live mount count per cache key, kept beside the cache rather than inside the entry so
  *  the mount effect mutates module state instead of a value produced during render. */
 const liveRefs = new Map<string, number>();
+/** Keys that have completed at least one mount. Entries are inserted during render but
+ *  only retained in the effect, so without this a sweep in that window could dispose a
+ *  texture a sprite has already been handed. */
+const everMounted = new Set<string>();
 
 const FONT_PX = 64;
 const FONT_STACK =
@@ -95,13 +99,17 @@ function sweep(): void {
   for (const [key, entry] of cache) {
     if (cache.size <= MAX_ENTRIES) break;
     if ((liveRefs.get(key) ?? 0) > 0) continue;
+    // Created but not yet mounted: still in flight, so not ours to dispose.
+    if (!everMounted.has(key)) continue;
     cache.delete(key);
+    everMounted.delete(key);
     entry.texture.dispose();
   }
 }
 
 function retain(key: string): void {
   liveRefs.set(key, (liveRefs.get(key) ?? 0) + 1);
+  everMounted.add(key);
 }
 
 function release(key: string): void {

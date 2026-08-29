@@ -42,3 +42,23 @@ export type Conventions = {
   rotationMode: RotationMode;
   angleUnit: AngleUnit;
 };
+
+/**
+ * What a vector's components represent, which decides how they transform between frames.
+ *
+ * A direction only rotates; a point rotates *and* translates. Between frames with
+ * different origins the two rules give different answers, so this is never inferred — it
+ * is stated per vector and named in every readout.
+ */
+export type VectorKind = 'direction' | 'point';
+
+export type SceneVector = {
+  id: string;
+  name: string;
+  /** The frame whose axes `components` are expressed in. */
+  frameId: string;
+  components: Vec3;
+  kind: VectorKind;
+  color: string;
+  visible: boolean;
+};

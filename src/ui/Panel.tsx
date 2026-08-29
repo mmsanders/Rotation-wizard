@@ -3,11 +3,14 @@ import { BottomSheet } from './BottomSheet';
 import { FrameList } from './FrameList';
 import { FrameControls } from './FrameControls';
 import { ComparePanel } from './ComparePanel';
+import { VectorList } from './VectorList';
+import { VectorControls } from './VectorControls';
 import { SettingsPanel } from './SettingsPanel';
 import { DESKTOP_QUERY, useMediaQuery } from './useMediaQuery';
 
 const TABS = [
   { id: 'frames', label: 'Frames' },
+  { id: 'vectors', label: 'Vectors' },
   { id: 'compare', label: 'Compare' },
   { id: 'setup', label: 'Setup' },
 ] as const;
@@ -48,6 +51,12 @@ export function Panel() {
         <div className="stack">
           <FrameList />
           <FrameControls />
+        </div>
+      )}
+      {tab === 'vectors' && (
+        <div className="stack">
+          <VectorList />
+          <VectorControls />
         </div>
       )}
       {tab === 'compare' && <ComparePanel />}

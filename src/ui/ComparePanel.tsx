@@ -1,7 +1,31 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useSceneStore } from '../store/useSceneStore';
 import { IDENTITY_TRANSFORM, relativeTransform, resolveWorldTransforms } from '../math/transforms';
 import { Readout } from './Readout';
+import { Segmented } from './Segmented';
+import { VectorCompare } from './VectorCompare';
+
+type CompareMode = 'frames' | 'vectors';
+
+const MODE_OPTIONS = [
+  { value: 'frames' as CompareMode, label: 'Frames', title: 'Rotation between two frames' },
+  { value: 'vectors' as CompareMode, label: 'Vectors', title: 'Angle between two vectors' },
+];
+
+/** Comparison, in either of the two things there are to compare. */
+export function ComparePanel() {
+  const [mode, setMode] = useState<CompareMode>('frames');
+
+  return (
+    <div className="stack">
+      <section className="card">
+        <Segmented label="Compare" value={mode} options={MODE_OPTIONS} onChange={setMode} />
+      </section>
+
+      {mode === 'vectors' ? <VectorCompare /> : <ComparedFrames />}
+    </div>
+  );
+}
 
 /**
  * Any frame against any other frame.
@@ -10,7 +34,7 @@ import { Readout } from './Readout';
  * confusing "the orientation of B seen from A" with "the operator that maps B-coordinates
  * into A" is the classic way to end up with an inverted rotation and no idea why.
  */
-export function ComparePanel() {
+function ComparedFrames() {
   const frames = useSceneStore((s) => s.frames);
   const order = useSceneStore((s) => s.order);
   const compareA = useSceneStore((s) => s.compareA);
