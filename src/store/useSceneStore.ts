@@ -12,7 +12,7 @@ import {
 import { DEFAULT_CONVENTIONS, quatFromEuler } from '../math/conventions';
 import { resolveWorldTransforms, wouldCreateCycle } from '../math/transforms';
 import { vectorInFrame } from '../math/vectors';
-import { globalFrame, repairPersistedScene } from './sceneRepair';
+import { globalFrame, repairPersistedScene, type ScenePersisted } from './sceneRepair';
 
 /**
  * Scene state.
@@ -71,6 +71,8 @@ export type SceneState = {
   swapCompare: () => void;
   setConventions: (patch: Partial<Conventions>) => void;
   resetScene: () => void;
+  /** Replace the whole scene — used by the shareable-link importer. */
+  loadScene: (scene: ScenePersisted) => void;
 
   selectVector: (id: string) => void;
   addVector: (frameId?: string) => string;
@@ -169,6 +171,29 @@ function uniqueName(existing: { name: string }[], base: string): string {
     const candidate = `${base} ${i}`;
     if (!taken.has(candidate)) return candidate;
   }
+}
+
+/**
+ * The persistable part of the current state.
+ *
+ * Shared by the persist middleware and the link encoder so the two can never disagree
+ * about what a scene consists of.
+ */
+export function sceneSnapshot(state: SceneState): ScenePersisted {
+  return {
+    frames: state.frames,
+    order: state.order,
+    selectedId: state.selectedId,
+    compareA: state.compareA,
+    compareB: state.compareB,
+    conventions: state.conventions,
+    vectors: state.vectors,
+    vectorOrder: state.vectorOrder,
+    selectedVectorId: state.selectedVectorId,
+    vectorCompareA: state.vectorCompareA,
+    vectorCompareB: state.vectorCompareB,
+    vectorCompareFrame: state.vectorCompareFrame,
+  };
 }
 
 export const useSceneStore = create<SceneState>()(
@@ -320,6 +345,8 @@ export const useSceneStore = create<SceneState>()(
 
       resetScene: () => set({ ...initialScene(), conventions: get().conventions }),
 
+      loadScene: (scene) => set({ ...scene }),
+
       // --- vectors ------------------------------------------------------------------
 
       selectVector: (id) => set({ selectedVectorId: id }),
@@ -438,20 +465,7 @@ export const useSceneStore = create<SceneState>()(
     {
       name: 'rotation-wizard/scene',
       version: 2,
-      partialize: (state) => ({
-        frames: state.frames,
-        order: state.order,
-        selectedId: state.selectedId,
-        compareA: state.compareA,
-        compareB: state.compareB,
-        conventions: state.conventions,
-        vectors: state.vectors,
-        vectorOrder: state.vectorOrder,
-        selectedVectorId: state.selectedVectorId,
-        vectorCompareA: state.vectorCompareA,
-        vectorCompareB: state.vectorCompareB,
-        vectorCompareFrame: state.vectorCompareFrame,
-      }),
+      partialize: sceneSnapshot,
       /**
        * Rehydration is the one place untrusted data enters the store. `repairPersistedScene`
        * degrades a corrupt payload into a working scene rather than throwing; if there is

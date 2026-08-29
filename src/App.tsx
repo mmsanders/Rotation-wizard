@@ -1,5 +1,6 @@
 import { SceneCanvas } from './scene/SceneCanvas';
 import { Panel } from './ui/Panel';
+import { ImportBanner } from './ui/ImportBanner';
 import { DESKTOP_QUERY, useMediaQuery } from './ui/useMediaQuery';
 import { useSceneStore } from './store/useSceneStore';
 import { describeSequence } from './math/conventions';
@@ -32,6 +33,7 @@ export function App() {
       )}
 
       <Panel />
+      <ImportBanner />
     </div>
   );
 }

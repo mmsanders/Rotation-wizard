@@ -8,6 +8,12 @@ on:
       - main # main is already covered by the deploy workflow's build job
   workflow_dispatch:
 
+# A push to a branch with an open PR fires both triggers; this keeps only the newer run
+# rather than paying for the same commit twice.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   checks:
     runs-on: ubuntu-latest

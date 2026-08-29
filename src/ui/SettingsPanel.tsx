@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AngleUnit, EulerOrder, RotationMode, UpAxis } from '../types';
-import { useSceneStore } from '../store/useSceneStore';
+import { useSceneStore, sceneSnapshot } from '../store/useSceneStore';
+import { sceneLink } from '../share/sceneLink';
 import { EULER_ORDERS, describeSequence } from '../math/conventions';
 import { Segmented } from './Segmented';
 
@@ -44,6 +45,26 @@ export function SettingsPanel() {
   const setConventions = useSceneStore((s) => s.setConventions);
   const resetScene = useSceneStore((s) => s.resetScene);
   const [confirmingReset, setConfirmingReset] = useState(false);
+  const [linkState, setLinkState] = useState<'idle' | 'copied' | 'failed'>('idle');
+
+  const copyLink = () => {
+    const link = sceneLink(sceneSnapshot(useSceneStore.getState()), window.location.href);
+    const settle = (result: 'copied' | 'failed') => {
+      setLinkState(result);
+      window.setTimeout(() => setLinkState('idle'), 1800);
+    };
+    // Clipboard needs a secure context and can be refused; say so rather than appearing
+    // to have worked.
+    const clipboard = navigator.clipboard;
+    if (!clipboard) {
+      settle('failed');
+      return;
+    }
+    clipboard.writeText(link).then(
+      () => settle('copied'),
+      () => settle('failed'),
+    );
+  };
 
   return (
     <div className="stack">
@@ -88,6 +109,21 @@ export function SettingsPanel() {
           options={UNIT_OPTIONS}
           onChange={(angleUnit) => setConventions({ angleUnit })}
         />
+      </section>
+
+      <section className="card">
+        <h4 className="card__section card__section--first">Share</h4>
+        <p className="hint">
+          Puts the whole scene — frames, vectors and conventions — into a link, so you can
+          move a setup between your phone and desktop or send it to someone.
+        </p>
+        <button type="button" className="btn" onClick={copyLink}>
+          {linkState === 'copied'
+            ? 'Link copied'
+            : linkState === 'failed'
+              ? 'Could not copy — check clipboard permission'
+              : 'Copy link to this scene'}
+        </button>
       </section>
 
       <section className="card">
