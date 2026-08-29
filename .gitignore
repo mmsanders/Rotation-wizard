@@ -6,3 +6,5 @@ coverage
 .vite
 playwright-report
 test-results
+tsconfig.tsbuildinfo
+*.tsbuildinfo
