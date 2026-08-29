@@ -1,18 +1,22 @@
 name: CI
 
 # Deploy only runs on main, so without this a pull request would get no validation at all.
+#
+# Pull requests only, deliberately. Adding a `push` trigger as well fires both events for
+# the same commit, and no concurrency key fixes that cleanly: grouping them together makes
+# one run cancel the other, and a *cancelled* check run still attaches to the commit and
+# shows up on the pull request as not passing. One trigger, one set of checks.
+#
+# This also tests the right thing: a pull_request run builds the merge of the branch into
+# main, so it catches a conflict with main that building the branch alone would miss.
 on:
   pull_request:
-  push:
-    branches-ignore:
-      - main # main is already covered by the deploy workflow's build job
   workflow_dispatch:
 
-# A push to a branch with an open PR fires both triggers, so dedupe on the commit itself.
-# Keying on github.ref does not work here: it is refs/heads/<branch> for a push but
-# refs/pull/<n>/merge for a pull_request, putting the two runs in different groups.
+# Now that only one event fires, github.ref is stable per pull request — so a rapid second
+# push supersedes the first run rather than leaving both to finish.
 concurrency:
-  group: ci-${{ github.event.pull_request.head.sha || github.sha }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
