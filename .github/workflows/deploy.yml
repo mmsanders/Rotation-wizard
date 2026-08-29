@@ -1,10 +1,12 @@
 name: Deploy to GitHub Pages
 
+# Only the default branch: the `github-pages` environment's protection rule rejects
+# deployments from any other branch, so a feature-branch trigger can only ever produce a
+# failed deploy job. Preview locally with `npm run dev` instead.
 on:
   push:
     branches:
       - main
-      - claude/3d-rotation-visualizer-plan-7sg9u2
   workflow_dispatch:
 
 # Allow the GITHUB_TOKEN to deploy to Pages.
