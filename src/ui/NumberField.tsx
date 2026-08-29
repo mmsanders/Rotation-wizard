@@ -48,10 +48,18 @@ export function NumberField({
     if (raw.trim() !== '' && Number.isFinite(parsed)) onChange(parsed);
   };
 
+  /**
+   * Step without clamping to the slider's range.
+   *
+   * min/max here bound the *slider*, which is a convenience for coarse dragging — they are
+   * not validation. Clamping the steppers made them destructive: typing 25 into a position
+   * field whose slider stops at 10, then pressing "+", used to snap the value down to 10.
+   * Angles are worse, where clamping 270° to 180° changes which rotation you meant. Typed
+   * values are kept as entered; only the slider thumb is pinned to its range.
+   */
   const nudge = (delta: number) => {
     setDraft(null);
-    const next = Math.round((value + delta) * 1e6) / 1e6;
-    onChange(Math.min(max, Math.max(min, next)));
+    onChange(Math.round((value + delta) * 1e6) / 1e6);
   };
 
   return (

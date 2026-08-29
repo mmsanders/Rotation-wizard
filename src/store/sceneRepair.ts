@@ -51,11 +51,20 @@ const asVec3 = (v: unknown, fallback: Vec3): Vec3 => {
   return fallback;
 };
 
-/** A zero-norm quaternion would render as a degenerate frame, so fall back to identity. */
+/**
+ * Coerce stored data into a *unit* quaternion.
+ *
+ * Normalising is not cosmetic. A non-unit quaternion is not a rotation: three.js composes
+ * it into a matrix that also scales, so the frame's axes come out the wrong length and the
+ * Euler, axis-angle and matrix readouts are all quietly wrong — in the one function whose
+ * whole contract is that whatever it returns will render correctly. A zero-norm quaternion
+ * has no direction to recover, so that falls back to identity.
+ */
 const asQuat = (v: unknown): Quat => {
   if (Array.isArray(v) && v.length === 4 && v.every(isFiniteNumber)) {
     const [x, y, z, w] = v as Quat;
-    if (Math.hypot(x, y, z, w) > 1e-9) return [x, y, z, w];
+    const norm = Math.hypot(x, y, z, w);
+    if (norm > 1e-9) return [x / norm, y / norm, z / norm, w / norm];
   }
   return [0, 0, 0, 1];
 };

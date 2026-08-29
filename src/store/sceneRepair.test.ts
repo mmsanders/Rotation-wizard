@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { globalFrame, repairPersistedScene } from './sceneRepair';
-import { resolveWorldTransforms } from '../math/transforms';
+import { resolveWorldTransforms, rotationMatrixOf } from '../math/transforms';
 import { GLOBAL_FRAME_ID, type Frame } from '../types';
 
 const frame = (over: Partial<Frame> & { id: string }): Frame => ({
@@ -92,6 +92,33 @@ describe('repairPersistedScene', () => {
     })!;
     expect(out.frames.bad!.localPosition).toEqual([0, 0, 0]);
     expect(out.frames.bad!.localQuaternion).toEqual([0, 0, 0, 1]);
+  });
+
+  it('normalises a non-unit quaternion instead of passing it through', () => {
+    // [0, 0, 0.6, 0.6] has norm 0.8485 — a real direction, but not a rotation. Left as-is
+    // it would scale the frame's axes and quietly corrupt every readout derived from it.
+    const out = repairPersistedScene({
+      frames: { bad: { ...frame({ id: 'bad' }), localQuaternion: [0, 0, 0.6, 0.6] } },
+    })!;
+
+    const q = out.frames.bad!.localQuaternion;
+    expect(Math.hypot(...q)).toBeCloseTo(1, 12);
+    // Direction preserved: still a 90 deg turn about +Z.
+    expect(q[2]).toBeCloseTo(Math.SQRT1_2, 12);
+    expect(q[3]).toBeCloseTo(Math.SQRT1_2, 12);
+
+    // And the resolved transform is a true rotation: orthonormal, determinant +1.
+    const m = rotationMatrixOf(resolveWorldTransforms(out.frames).bad!.quaternion);
+    for (const row of m) {
+      expect(Math.hypot(row[0]!, row[1]!, row[2]!)).toBeCloseTo(1, 12);
+    }
+  });
+
+  it('leaves an already-unit quaternion untouched', () => {
+    const out = repairPersistedScene({
+      frames: { ok: { ...frame({ id: 'ok' }), localQuaternion: [0, 0, 0, 1] } },
+    })!;
+    expect(out.frames.ok!.localQuaternion).toEqual([0, 0, 0, 1]);
   });
 
   it('drops NaN and Infinity out of positions', () => {

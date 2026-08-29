@@ -32,6 +32,17 @@ type Props = {
 export function BottomSheet({ children, header }: Props) {
   const [detent, setDetent] = useState(1);
   const [dragHeight, setDragHeight] = useState<number | null>(null);
+  /**
+   * Viewport height is state, not a `window.innerHeight` read during render.
+   *
+   * Reading it at render time silently breaks on rotate: the resize handler used to only
+   * clear `dragHeight`, and when that was already null React's eager-state bailout skipped
+   * the re-render entirely, leaving the sheet sized from the *previous* viewport. Turning a
+   * phone to landscape could leave it covering the whole screen.
+   */
+  const [viewportHeight, setViewportHeight] = useState(() =>
+    typeof window === 'undefined' ? 800 : window.innerHeight,
+  );
   const dragRef = useRef<{ startY: number; startHeight: number; startedAt: number } | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
 
@@ -40,23 +51,23 @@ export function BottomSheet({ children, header }: Props) {
   const onPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId);
     const current =
-      sheetRef.current?.getBoundingClientRect().height ?? DETENTS[1] * window.innerHeight;
+      sheetRef.current?.getBoundingClientRect().height ?? DETENTS[1] * viewportHeight;
     dragRef.current = {
       startY: event.clientY,
       startHeight: current,
       startedAt: performance.now(),
     };
     setDragHeight(current);
-  }, []);
+  }, [viewportHeight]);
 
   const onPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     if (!drag) return;
     // Dragging up grows the sheet, hence the inverted delta.
     const next = drag.startHeight + (drag.startY - event.clientY);
-    const max = DETENTS[DETENTS.length - 1]! * window.innerHeight;
+    const max = DETENTS[DETENTS.length - 1]! * viewportHeight;
     setDragHeight(Math.min(max, Math.max(64, next)));
-  }, []);
+  }, [viewportHeight]);
 
   const onPointerUp = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -79,7 +90,7 @@ export function BottomSheet({ children, header }: Props) {
       }
 
       // Snap to whichever detent the finger ended up nearest.
-      const fraction = (drag.startHeight + (drag.startY - event.clientY)) / window.innerHeight;
+      const fraction = (drag.startHeight + (drag.startY - event.clientY)) / viewportHeight;
       let nearest = 0;
       for (let i = 1; i < DETENTS.length; i++) {
         if (Math.abs(DETENTS[i]! - fraction) < Math.abs(DETENTS[nearest]! - fraction)) {
@@ -88,12 +99,15 @@ export function BottomSheet({ children, header }: Props) {
       }
       setDetent(nearest);
     },
-    [cycle],
+    [cycle, viewportHeight],
   );
 
   // Re-snap on rotate/resize so the sheet keeps its proportion of the new viewport.
   useEffect(() => {
-    const onResize = () => setDragHeight(null);
+    const onResize = () => {
+      setViewportHeight(window.innerHeight);
+      setDragHeight(null);
+    };
     window.addEventListener('resize', onResize);
     window.addEventListener('orientationchange', onResize);
     return () => {
@@ -102,7 +116,7 @@ export function BottomSheet({ children, header }: Props) {
     };
   }, []);
 
-  const height = dragHeight ?? (DETENTS[detent] ?? DETENTS[1]) * window.innerHeight;
+  const height = dragHeight ?? (DETENTS[detent] ?? DETENTS[1]) * viewportHeight;
 
   return (
     <div
