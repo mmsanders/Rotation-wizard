@@ -9,6 +9,7 @@ import { mountQuaternion } from '../math/conventions';
 import { resolveWorldTransforms } from '../math/transforms';
 import { FrameAxes } from './FrameAxes';
 import { GroundGrid } from './GroundGrid';
+import { SceneVectors } from './SceneVectors';
 
 /**
  * Redraw whenever scene state changes.
@@ -115,6 +116,7 @@ export function SceneCanvas() {
           place the up-axis convention is applied. */}
       <group quaternion={mount}>
         <Frames />
+        <SceneVectors />
       </group>
 
       <OrbitControls

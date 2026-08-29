@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { Conventions, Quat, Vec3 } from '../types';
 import {
   axisAngleOf,
@@ -8,53 +8,14 @@ import {
 } from '../math/transforms';
 import { describeSequence, eulerFromQuat, eulerSequence, isNearGimbalLock } from '../math/conventions';
 import { AXIS_COLORS } from '../theme';
+import { CopyValue } from './CopyableRow';
+import { useCopy } from './useCopy';
 
 /** Fixed-width formatting, with negative zero normalised away. */
 function fmt(value: number, digits: number): string {
   if (!Number.isFinite(value)) return '—';
   const fixed = value.toFixed(digits);
   return fixed === `-${(0).toFixed(digits)}` ? (0).toFixed(digits) : fixed;
-}
-
-function useCopy(): [string | null, (key: string, text: string) => void] {
-  const [copied, setCopied] = useState<string | null>(null);
-
-  const copy = useCallback((key: string, text: string) => {
-    const done = () => {
-      setCopied(key);
-      window.setTimeout(() => setCopied((c) => (c === key ? null : c)), 1100);
-    };
-    // Clipboard access needs a secure context and can be denied; failing to copy should
-    // never throw an error into the render tree.
-    navigator.clipboard?.writeText(text).then(done).catch(done);
-  }, []);
-
-  return [copied, copy];
-}
-
-type ValueProps = {
-  name: string;
-  value: string;
-  color?: string;
-  copyKey: string;
-  copiedKey: string | null;
-  onCopy: (key: string, text: string) => void;
-};
-
-function Value({ name, value, color, copyKey, copiedKey, onCopy }: ValueProps) {
-  return (
-    <button
-      type="button"
-      className="value"
-      title={`Copy ${name}`}
-      onClick={() => onCopy(copyKey, value)}
-    >
-      <span className="value__name" style={color ? { color } : undefined}>
-        {name}
-      </span>
-      <span className="value__num">{copiedKey === copyKey ? 'copied' : value}</span>
-    </button>
-  );
 }
 
 type Props = {
@@ -110,8 +71,8 @@ export function Readout({
           </button>
         </header>
         <div className="readout__grid readout__grid--4">
-          <Value name="w" value={fmt(q[3], 6)} copyKey="qw" copiedKey={copiedKey} onCopy={copy} />
-          <Value
+          <CopyValue name="w" value={fmt(q[3], 6)} copyKey="qw" copiedKey={copiedKey} onCopy={copy} />
+          <CopyValue
             name="x"
             value={fmt(q[0], 6)}
             color={AXIS_COLORS.X}
@@ -119,7 +80,7 @@ export function Readout({
             copiedKey={copiedKey}
             onCopy={copy}
           />
-          <Value
+          <CopyValue
             name="y"
             value={fmt(q[1], 6)}
             color={AXIS_COLORS.Y}
@@ -127,7 +88,7 @@ export function Readout({
             copiedKey={copiedKey}
             onCopy={copy}
           />
-          <Value
+          <CopyValue
             name="z"
             value={fmt(q[2], 6)}
             color={AXIS_COLORS.Z}
@@ -146,7 +107,7 @@ export function Readout({
         </header>
         <div className="readout__grid readout__grid--3">
           {slots.map((slot) => (
-            <Value
+            <CopyValue
               key={slot.axis}
               name={slot.alias ? `${slot.alias} (${slot.axis})` : slot.axis}
               value={`${fmt(euler[slot.index], angleDigits)}${unit}`}
@@ -170,14 +131,14 @@ export function Readout({
           <h4>Axis &amp; angle</h4>
         </header>
         <div className="readout__grid readout__grid--4">
-          <Value
+          <CopyValue
             name="angle"
             value={`${fmt(angle, angleDigits)}${unit}`}
             copyKey="aa-angle"
             copiedKey={copiedKey}
             onCopy={copy}
           />
-          <Value
+          <CopyValue
             name="x"
             value={fmt(axis[0], 5)}
             color={AXIS_COLORS.X}
@@ -185,7 +146,7 @@ export function Readout({
             copiedKey={copiedKey}
             onCopy={copy}
           />
-          <Value
+          <CopyValue
             name="y"
             value={fmt(axis[1], 5)}
             color={AXIS_COLORS.Y}
@@ -193,7 +154,7 @@ export function Readout({
             copiedKey={copiedKey}
             onCopy={copy}
           />
-          <Value
+          <CopyValue
             name="z"
             value={fmt(axis[2], 5)}
             color={AXIS_COLORS.Z}
@@ -211,7 +172,7 @@ export function Readout({
           </header>
           <div className="readout__grid readout__grid--3">
             {(['X', 'Y', 'Z'] as const).map((axisName, i) => (
-              <Value
+              <CopyValue
                 key={axisName}
                 name={axisName}
                 value={fmt(position[i] ?? 0, 4)}

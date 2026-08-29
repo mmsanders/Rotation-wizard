@@ -175,7 +175,9 @@
 
 .tabs__tab {
   flex: 1;
+  min-width: 0;
   min-height: 38px;
+  padding: 0 2px;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -382,6 +384,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 14.5px;
+}
+
+.framerow__meta {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40%;
 }
 
 .framerow__badge {
@@ -873,6 +885,17 @@
 /* ---------------------------------------------------------------------------
    Narrow phones
    --------------------------------------------------------------------------- */
+
+@media (max-width: 400px) {
+  /* Four tabs in 390px: trim the type rather than let labels wrap or clip. */
+  .tabs__tab {
+    font-size: 13px;
+  }
+
+  .framerow__meta {
+    display: none;
+  }
+}
 
 @media (max-width: 360px) {
   .readout__grid--4 {

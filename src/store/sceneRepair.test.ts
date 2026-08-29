@@ -200,3 +200,91 @@ describe('repairPersistedScene', () => {
     }
   });
 });
+
+describe('repairPersistedScene — vectors', () => {
+  const withVectors = (vectors: unknown, extra: Record<string, unknown> = {}) =>
+    repairPersistedScene({
+      frames: { [GLOBAL_FRAME_ID]: globalFrame(), body: frame({ id: 'body' }) },
+      vectors,
+      ...extra,
+    })!;
+
+  it('keeps a healthy vector intact', () => {
+    const out = withVectors({
+      v1: {
+        id: 'v1',
+        name: 'Nose',
+        frameId: 'body',
+        components: [1, 2, 3],
+        kind: 'point',
+        color: '#fff',
+        visible: true,
+      },
+    });
+    expect(out.vectors.v1).toMatchObject({
+      name: 'Nose',
+      frameId: 'body',
+      components: [1, 2, 3],
+      kind: 'point',
+    });
+    expect(out.vectorOrder).toEqual(['v1']);
+  });
+
+  it('re-homes a vector whose frame has vanished rather than dropping it', () => {
+    const out = withVectors({ v1: { id: 'v1', frameId: 'ghost', components: [1, 0, 0] } });
+    expect(out.vectors.v1!.frameId).toBe(GLOBAL_FRAME_ID);
+  });
+
+  it('defaults an unrecognised kind to direction', () => {
+    const out = withVectors({ v1: { id: 'v1', frameId: 'body', kind: 'sideways' } });
+    expect(out.vectors.v1!.kind).toBe('direction');
+  });
+
+  it('replaces corrupt components', () => {
+    const out = withVectors({ v1: { id: 'v1', frameId: 'body', components: [1, 'x', NaN] } });
+    expect(out.vectors.v1!.components).toEqual([1, 0, 0]);
+  });
+
+  it('tolerates a scene saved before vectors existed', () => {
+    const out = repairPersistedScene({ frames: { [GLOBAL_FRAME_ID]: globalFrame() } })!;
+    expect(out.vectors).toEqual({});
+    expect(out.vectorOrder).toEqual([]);
+    expect(out.selectedVectorId).toBeNull();
+  });
+
+  it('points dangling vector selections at a surviving vector', () => {
+    const out = withVectors(
+      { v1: { id: 'v1', frameId: 'body' } },
+      { selectedVectorId: 'gone', vectorCompareA: 'gone', vectorCompareB: 'v1' },
+    );
+    expect(out.selectedVectorId).toBe('v1');
+    expect(out.vectorCompareA).toBe('v1');
+    expect(out.vectorCompareB).toBe('v1');
+  });
+});
+
+describe('repairPersistedScene — the global frame is always the identity', () => {
+  it('strips a stored offset or rotation from the root', () => {
+    // Everything is measured against this frame, so an offset root would shift every
+    // readout in the app while looking perfectly valid.
+    const out = repairPersistedScene({
+      frames: {
+        [GLOBAL_FRAME_ID]: {
+          ...globalFrame(),
+          localPosition: [5, -2, 9],
+          localQuaternion: [0, 0, 0.7071, 0.7071],
+        },
+      },
+    })!;
+    expect(out.frames[GLOBAL_FRAME_ID]!.localPosition).toEqual([0, 0, 0]);
+    expect(out.frames[GLOBAL_FRAME_ID]!.localQuaternion).toEqual([0, 0, 0, 1]);
+  });
+
+  it('keeps the root’s cosmetic fields', () => {
+    const out = repairPersistedScene({
+      frames: { [GLOBAL_FRAME_ID]: { ...globalFrame(), name: 'World', color: '#123456' } },
+    })!;
+    expect(out.frames[GLOBAL_FRAME_ID]!.name).toBe('World');
+    expect(out.frames[GLOBAL_FRAME_ID]!.color).toBe('#123456');
+  });
+});
