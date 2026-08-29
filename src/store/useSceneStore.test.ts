@@ -3,6 +3,7 @@ import { useSceneStore } from './useSceneStore';
 import { GLOBAL_FRAME_ID } from '../types';
 import { IDENTITY_TRANSFORM, resolveWorldTransforms } from '../math/transforms';
 import { vectorInFrame } from '../math/vectors';
+import { DEFAULT_CONVENTIONS, quatFromEuler } from '../math/conventions';
 
 const store = () => useSceneStore.getState();
 
@@ -211,5 +212,72 @@ describe('useSceneStore — vectors', () => {
     expect(store().vectorCompareFrame).toBe(GLOBAL_FRAME_ID);
     store().setVectorCompareFrame('body');
     expect(store().vectorCompareFrame).toBe('body');
+  });
+});
+
+describe('useSceneStore — deleting a frame moves nothing', () => {
+  beforeEach(() => {
+    store().resetScene();
+  });
+
+  it('keeps descendant frames exactly where they were', () => {
+    // Global -> A at (5,0,0) -> B at (1,0,0). B sits at world (6,0,0); deleting A must
+    // leave it there, which means B's stored transform has to be rewritten.
+    const a = store().addFrame(GLOBAL_FRAME_ID);
+    store().setLocalPosition(a, [5, 0, 0]);
+    const b = store().addFrame(a);
+    store().setLocalPosition(b, [1, 0, 0]);
+
+    const before = resolveWorldTransforms(store().frames)[b]!;
+    expect(before.position[0]).toBeCloseTo(6, 10);
+
+    store().removeFrame(a);
+
+    const after = resolveWorldTransforms(store().frames)[b]!;
+    expect(store().frames[b]!.parentId).toBe(GLOBAL_FRAME_ID);
+    after.position.forEach((v, i) => expect(v).toBeCloseTo(before.position[i]!, 10));
+    after.quaternion.forEach((v, i) => expect(v).toBeCloseTo(before.quaternion[i]!, 10));
+  });
+
+  it('keeps rotated descendants where they were', () => {
+    const a = store().addFrame(GLOBAL_FRAME_ID);
+    store().setLocalPosition(a, [2, 1, 0]);
+    store().setLocalQuaternion(a, quatFromEuler([0, 0, 90], DEFAULT_CONVENTIONS));
+    const b = store().addFrame(a);
+    store().setLocalPosition(b, [1, 0, 0]);
+    store().setLocalQuaternion(b, quatFromEuler([0, 0, 45], DEFAULT_CONVENTIONS));
+
+    const before = resolveWorldTransforms(store().frames)[b]!;
+    store().removeFrame(a);
+    const after = resolveWorldTransforms(store().frames)[b]!;
+
+    after.position.forEach((v, i) => expect(v).toBeCloseTo(before.position[i]!, 10));
+    // Compare rotations with the sign aligned; q and -q are the same rotation.
+    const dot = after.quaternion.reduce((acc, v, i) => acc + v * before.quaternion[i]!, 0);
+    const sign = dot < 0 ? -1 : 1;
+    after.quaternion.forEach((v, i) => expect(v).toBeCloseTo(sign * before.quaternion[i]!, 10));
+  });
+
+  it('keeps vectors on a surviving descendant where they were', () => {
+    const a = store().addFrame(GLOBAL_FRAME_ID);
+    store().setLocalPosition(a, [3, 0, 0]);
+    const b = store().addFrame(a);
+    store().setLocalPosition(b, [0, 2, 0]);
+    const v = store().addVector(b);
+    store().setVectorKind(v, 'point');
+
+    const worldOf = () => {
+      const s = store();
+      return vectorInFrame(
+        s.vectors[v]!.components,
+        'point',
+        resolveWorldTransforms(s.frames)[s.vectors[v]!.frameId]!,
+        IDENTITY_TRANSFORM,
+      );
+    };
+
+    const before = worldOf();
+    store().removeFrame(a);
+    worldOf().forEach((coord, i) => expect(coord).toBeCloseTo(before[i]!, 10));
   });
 });

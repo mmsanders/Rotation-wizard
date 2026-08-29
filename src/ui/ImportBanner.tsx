@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSceneStore } from '../store/useSceneStore';
-import { replacedByImport } from '../share/importOnBoot';
+import { clearReplacedByImport, replacedByImport } from '../share/importOnBoot';
 
 /**
  * Offers an Undo after a scene arrived from a shared link.
@@ -9,6 +9,9 @@ import { replacedByImport } from '../share/importOnBoot';
  * reports it. A link is imported without a confirmation prompt — clicking one *is* the
  * request, and a dialog on every open would be friction for the main use case of moving a
  * setup between your own devices — so the safety net is the Undo rather than a gate.
+ *
+ * The offer is stored rather than held in memory, so it survives a refresh: the import has
+ * already overwritten the saved scene by the time this renders.
  */
 export function ImportBanner() {
   const loadScene = useSceneStore((s) => s.loadScene);
@@ -26,6 +29,7 @@ export function ImportBanner() {
         className="toast__action"
         onClick={() => {
           loadScene(replaced);
+          clearReplacedByImport();
           setDismissed(true);
         }}
       >
@@ -35,7 +39,10 @@ export function ImportBanner() {
         type="button"
         className="toast__close"
         aria-label="Dismiss"
-        onClick={() => setDismissed(true)}
+        onClick={() => {
+          clearReplacedByImport();
+          setDismissed(true);
+        }}
       >
         ×
       </button>

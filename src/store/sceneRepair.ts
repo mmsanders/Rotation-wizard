@@ -144,12 +144,15 @@ export function repairPersistedScene(saved: unknown): ScenePersisted | null {
    *
    * Everything in the scene is ultimately measured against this frame, so a stored global
    * frame carrying an offset or rotation would silently shift every readout in the app.
-   * Only its cosmetic fields are allowed through.
+   * Only its pose is overridden — name, colour and visibility are the user's to set, and
+   * hiding the root is a supported action whose state must survive a reload.
    */
   const storedGlobal = frames[GLOBAL_FRAME_ID];
   frames[GLOBAL_FRAME_ID] = {
     ...globalFrame(),
-    ...(storedGlobal ? { name: storedGlobal.name, color: storedGlobal.color } : {}),
+    ...(storedGlobal
+      ? { name: storedGlobal.name, color: storedGlobal.color, visible: storedGlobal.visible }
+      : {}),
     parentId: null,
     localPosition: [0, 0, 0],
     localQuaternion: [0, 0, 0, 1],

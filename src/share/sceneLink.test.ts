@@ -92,6 +92,30 @@ describe('encodeScene / decodeScene', () => {
     bodyAfter.quaternion.forEach((v, i) => expect(v).toBeCloseTo(bodyBefore.quaternion[i]!, 6));
   });
 
+  it('carries the vector selections, not just the vectors', () => {
+    // The Setup panel calls this "the whole scene", so the comparison the sender set up
+    // has to arrive intact rather than resetting to the first two vectors.
+    const base = scene();
+    base.selectedVectorId = 'target';
+    base.vectorCompareA = 'target';
+    base.vectorCompareB = 'nose';
+    base.vectorCompareFrame = 'body';
+
+    const out = decodeScene(encodeScene(base))!;
+    const nameOf = (id: string | null) => (id ? out.vectors[id]?.name : null);
+
+    expect(nameOf(out.selectedVectorId)).toBe('Target');
+    expect(nameOf(out.vectorCompareA)).toBe('Target');
+    expect(nameOf(out.vectorCompareB)).toBe('Nose');
+    expect(out.frames[out.vectorCompareFrame]!.name).toBe('Body');
+  });
+
+  it('carries a hidden global frame', () => {
+    const base = scene();
+    base.frames[GLOBAL_FRAME_ID] = { ...base.frames[GLOBAL_FRAME_ID]!, visible: false };
+    expect(decodeScene(encodeScene(base))!.frames[GLOBAL_FRAME_ID]!.visible).toBe(false);
+  });
+
   it('preserves conventions', () => {
     const custom = {
       ...scene(),

@@ -6,18 +6,33 @@ import { useCallback, useState } from 'react';
  * Returns the key of the most recently copied value so a caller can swap that one label
  * for a confirmation without tracking it itself.
  */
-export function useCopy(): [string | null, (key: string, text: string) => void] {
-  const [copied, setCopied] = useState<string | null>(null);
+export type CopyStatus = { key: string; ok: boolean } | null;
+
+export function useCopy(): [CopyStatus, (key: string, text: string) => void] {
+  const [status, setStatus] = useState<CopyStatus>(null);
 
   const copy = useCallback((key: string, text: string) => {
-    const done = () => {
-      setCopied(key);
-      window.setTimeout(() => setCopied((c) => (c === key ? null : c)), 1100);
+    const settle = (ok: boolean) => {
+      setStatus({ key, ok });
+      window.setTimeout(() => setStatus((s) => (s?.key === key ? null : s)), 1300);
     };
-    // Clipboard access needs a secure context and can be denied; failing to copy should
-    // never throw an error into the render tree.
-    navigator.clipboard?.writeText(text).then(done).catch(done);
+
+    /**
+     * The Clipboard API needs a secure context, so it is simply absent over plain http —
+     * which is exactly how the dev server is reached from a phone on the LAN. Optional
+     * chaining alone would short-circuit the whole chain and make copying a silent no-op:
+     * no copy, no confirmation, no error. Report the failure instead.
+     */
+    const clipboard = navigator.clipboard;
+    if (!clipboard) {
+      settle(false);
+      return;
+    }
+    clipboard.writeText(text).then(
+      () => settle(true),
+      () => settle(false),
+    );
   }, []);
 
-  return [copied, copy];
+  return [status, copy];
 }

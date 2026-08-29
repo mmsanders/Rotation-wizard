@@ -40,7 +40,7 @@ export function Readout({
   showPosition = true,
   positionLabel = 'Position',
 }: Props) {
-  const [copiedKey, copy] = useCopy();
+  const [copyStatus, copy] = useCopy();
   const [showMatrix, setShowMatrix] = useState(false);
 
   const q: Quat = canonicalizeQuat(transform.quaternion);
@@ -67,17 +67,21 @@ export function Readout({
             className="readout__copyall"
             onClick={() => copy('quat-all', quatText)}
           >
-            {copiedKey === 'quat-all' ? 'copied' : 'copy all'}
+            {copyStatus?.key === 'quat-all'
+              ? copyStatus.ok
+                ? 'copied'
+                : 'no clipboard'
+              : 'copy all'}
           </button>
         </header>
         <div className="readout__grid readout__grid--4">
-          <CopyValue name="w" value={fmt(q[3], 6)} copyKey="qw" copiedKey={copiedKey} onCopy={copy} />
+          <CopyValue name="w" value={fmt(q[3], 6)} copyKey="qw" status={copyStatus} onCopy={copy} />
           <CopyValue
             name="x"
             value={fmt(q[0], 6)}
             color={AXIS_COLORS.X}
             copyKey="qx"
-            copiedKey={copiedKey}
+            status={copyStatus}
             onCopy={copy}
           />
           <CopyValue
@@ -85,7 +89,7 @@ export function Readout({
             value={fmt(q[1], 6)}
             color={AXIS_COLORS.Y}
             copyKey="qy"
-            copiedKey={copiedKey}
+            status={copyStatus}
             onCopy={copy}
           />
           <CopyValue
@@ -93,7 +97,7 @@ export function Readout({
             value={fmt(q[2], 6)}
             color={AXIS_COLORS.Z}
             copyKey="qz"
-            copiedKey={copiedKey}
+            status={copyStatus}
             onCopy={copy}
           />
         </div>
@@ -113,7 +117,7 @@ export function Readout({
               value={`${fmt(euler[slot.index], angleDigits)}${unit}`}
               color={AXIS_COLORS[slot.axis]}
               copyKey={`e${slot.axis}`}
-              copiedKey={copiedKey}
+              status={copyStatus}
               onCopy={copy}
             />
           ))}
@@ -135,7 +139,7 @@ export function Readout({
             name="angle"
             value={`${fmt(angle, angleDigits)}${unit}`}
             copyKey="aa-angle"
-            copiedKey={copiedKey}
+            status={copyStatus}
             onCopy={copy}
           />
           <CopyValue
@@ -143,7 +147,7 @@ export function Readout({
             value={fmt(axis[0], 5)}
             color={AXIS_COLORS.X}
             copyKey="aa-x"
-            copiedKey={copiedKey}
+            status={copyStatus}
             onCopy={copy}
           />
           <CopyValue
@@ -151,7 +155,7 @@ export function Readout({
             value={fmt(axis[1], 5)}
             color={AXIS_COLORS.Y}
             copyKey="aa-y"
-            copiedKey={copiedKey}
+            status={copyStatus}
             onCopy={copy}
           />
           <CopyValue
@@ -159,7 +163,7 @@ export function Readout({
             value={fmt(axis[2], 5)}
             color={AXIS_COLORS.Z}
             copyKey="aa-z"
-            copiedKey={copiedKey}
+            status={copyStatus}
             onCopy={copy}
           />
         </div>
@@ -178,7 +182,7 @@ export function Readout({
                 value={fmt(position[i] ?? 0, 4)}
                 color={AXIS_COLORS[axisName]}
                 copyKey={`p${axisName}`}
-                copiedKey={copiedKey}
+                status={copyStatus}
                 onCopy={copy}
               />
             ))}

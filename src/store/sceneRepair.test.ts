@@ -287,4 +287,13 @@ describe('repairPersistedScene — the global frame is always the identity', () 
     expect(out.frames[GLOBAL_FRAME_ID]!.name).toBe('World');
     expect(out.frames[GLOBAL_FRAME_ID]!.color).toBe('#123456');
   });
+
+  it('keeps the root hidden if the user hid it', () => {
+    // The hide toggle is enabled for the root, so its state is a user choice that has to
+    // survive a reload — only the pose is forced.
+    const out = repairPersistedScene({
+      frames: { [GLOBAL_FRAME_ID]: { ...globalFrame(), visible: false } },
+    })!;
+    expect(out.frames[GLOBAL_FRAME_ID]!.visible).toBe(false);
+  });
 });

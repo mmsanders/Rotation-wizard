@@ -55,6 +55,8 @@ type EncodedScene = {
   vec: EncodedVector[];
   sel: number;
   cmp: [a: number, b: number];
+  /** Selected vector, the compared pair, and the frame the comparison is evaluated in. */
+  vsel: [selected: number, a: number, b: number, frame: number];
 };
 
 // --- base64url over UTF-8, so names in any language survive the trip ---------------
@@ -113,6 +115,9 @@ export function encodeScene(scene: ScenePersisted): string {
     ];
   });
 
+  const vectorIndexOf = new Map(vectorIds.map((id, i) => [id, i]));
+  const vectorIndex = (id: string | null) => (id ? (vectorIndexOf.get(id) ?? -1) : -1);
+
   const payload: EncodedScene = {
     v: FORMAT_VERSION,
     c: [
@@ -125,6 +130,12 @@ export function encodeScene(scene: ScenePersisted): string {
     vec: vectors,
     sel: indexOf.get(scene.selectedId) ?? 0,
     cmp: [indexOf.get(scene.compareA) ?? 0, indexOf.get(scene.compareB) ?? 0],
+    vsel: [
+      vectorIndex(scene.selectedVectorId),
+      vectorIndex(scene.vectorCompareA),
+      vectorIndex(scene.vectorCompareB),
+      indexOf.get(scene.vectorCompareFrame) ?? 0,
+    ],
   };
 
   return toBase64Url(JSON.stringify(payload));
@@ -201,6 +212,10 @@ export function decodeScene(encoded: string): ScenePersisted | null {
 
   const conventions = Array.isArray(payload.c) ? payload.c : [];
   const compare = Array.isArray(payload.cmp) ? payload.cmp : [];
+  const vectorSel = Array.isArray(payload.vsel) ? payload.vsel : [];
+  // -1 means "none"; anything else falls back to the first vector, as repair would.
+  const vectorAt = (index: unknown, fallback: string | null) =>
+    typeof index === 'number' && index >= 0 ? (vectorOrder[index] ?? fallback) : fallback;
 
   // Hand the reconstructed shape to the same repair the store uses on rehydrate, so a
   // hostile or truncated link cannot produce a scene that fails to render.
@@ -212,10 +227,10 @@ export function decodeScene(encoded: string): ScenePersisted | null {
     selectedId: idFor(typeof payload.sel === 'number' ? payload.sel : 0),
     compareA: idFor(typeof compare[0] === 'number' ? compare[0] : 0),
     compareB: idFor(typeof compare[1] === 'number' ? compare[1] : 0),
-    vectorCompareA: vectorOrder[0] ?? null,
-    vectorCompareB: vectorOrder[1] ?? vectorOrder[0] ?? null,
-    vectorCompareFrame: GLOBAL_FRAME_ID,
-    selectedVectorId: vectorOrder[0] ?? null,
+    vectorCompareA: vectorAt(vectorSel[1], vectorOrder[0] ?? null),
+    vectorCompareB: vectorAt(vectorSel[2], vectorOrder[1] ?? vectorOrder[0] ?? null),
+    vectorCompareFrame: idFor(typeof vectorSel[3] === 'number' ? vectorSel[3] : 0),
+    selectedVectorId: vectorAt(vectorSel[0], vectorOrder[0] ?? null),
     conventions: {
       upAxis: conventions[0],
       eulerOrder: conventions[1],

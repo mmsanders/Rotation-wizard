@@ -10,7 +10,12 @@ import {
   type VectorKind,
 } from '../types';
 import { DEFAULT_CONVENTIONS, quatFromEuler } from '../math/conventions';
-import { resolveWorldTransforms, wouldCreateCycle } from '../math/transforms';
+import {
+  IDENTITY_TRANSFORM,
+  relativeTransform,
+  resolveWorldTransforms,
+  wouldCreateCycle,
+} from '../math/transforms';
 import { vectorInFrame } from '../math/vectors';
 import { globalFrame, repairPersistedScene, type ScenePersisted } from './sceneRepair';
 
@@ -234,43 +239,58 @@ export const useSceneStore = create<SceneState>()(
         set((state) => {
           if (id === GLOBAL_FRAME_ID || !state.frames[id]) return state;
 
-          // Re-home orphans onto the deleted frame's parent so the tree stays connected
-          // and nothing silently disappears from the scene.
           const inheritedParent = state.frames[id]?.parentId ?? GLOBAL_FRAME_ID;
+          const worldBefore = resolveWorldTransforms(state.frames);
+          const anchor = worldBefore[inheritedParent] ?? IDENTITY_TRANSFORM;
+
+          /**
+           * Deleting a frame must not move anything that hung off it.
+           *
+           * Children are re-homed onto the inherited parent *and* re-expressed relative to
+           * it: a child's stored transform is relative to the frame being removed, so
+           * carrying it over unchanged would teleport the child by however far the deleted
+           * frame sat from its parent. `relativeTransform(anchor, childWorld)` is precisely
+           * the child's pose as seen from its new parent, which leaves it exactly where it
+           * was in space.
+           */
           const frames: Record<string, Frame> = {};
           for (const [key, frame] of Object.entries(state.frames)) {
             if (key === id) continue;
-            frames[key] =
-              frame.parentId === id ? { ...frame, parentId: inheritedParent } : frame;
+            if (frame.parentId !== id) {
+              frames[key] = frame;
+              continue;
+            }
+            const childWorld = worldBefore[key] ?? IDENTITY_TRANSFORM;
+            const local = relativeTransform(anchor, childWorld);
+            frames[key] = {
+              ...frame,
+              parentId: inheritedParent,
+              localPosition: local.position,
+              localQuaternion: local.quaternion,
+            };
           }
 
           const order = state.order.filter((f) => f !== id);
           const fallback = order[order.length - 1] ?? GLOBAL_FRAME_ID;
 
           /**
-           * Re-express vectors defined in the deleted frame, rather than just re-pointing
-           * them. Their components only mean something relative to a frame, so moving them
-           * to the inherited parent unchanged would silently teleport them; converting the
-           * components leaves each vector exactly where it was in space.
+           * Vectors defined in the deleted frame get the same treatment, for the same
+           * reason: their components only mean something relative to a frame. Every other
+           * frame keeps its world pose through this operation, so no other vector needs
+           * touching.
            */
-          const worldBefore = resolveWorldTransforms(state.frames);
-          const worldAfter = resolveWorldTransforms(frames);
           const vectors: Record<string, SceneVector> = {};
           for (const [key, vector] of Object.entries(state.vectors)) {
             if (vector.frameId !== id) {
               vectors[key] = vector;
               continue;
             }
-            const from = worldBefore[id];
-            const to = worldAfter[inheritedParent] ?? worldAfter[GLOBAL_FRAME_ID];
-            vectors[key] =
-              from && to
-                ? {
-                    ...vector,
-                    frameId: inheritedParent,
-                    components: vectorInFrame(vector.components, vector.kind, from, to),
-                  }
-                : { ...vector, frameId: inheritedParent };
+            const from = worldBefore[id] ?? IDENTITY_TRANSFORM;
+            vectors[key] = {
+              ...vector,
+              frameId: inheritedParent,
+              components: vectorInFrame(vector.components, vector.kind, from, anchor),
+            };
           }
 
           return {

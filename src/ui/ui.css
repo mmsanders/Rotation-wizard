@@ -969,3 +969,8 @@
 .toast__close:hover {
   color: var(--text);
 }
+
+.value__num--failed {
+  color: var(--warn);
+  font-size: 11px;
+}
