@@ -8,10 +8,11 @@ on:
       - main # main is already covered by the deploy workflow's build job
   workflow_dispatch:
 
-# A push to a branch with an open PR fires both triggers; this keeps only the newer run
-# rather than paying for the same commit twice.
+# A push to a branch with an open PR fires both triggers, so dedupe on the commit itself.
+# Keying on github.ref does not work here: it is refs/heads/<branch> for a push but
+# refs/pull/<n>/merge for a pull_request, putting the two runs in different groups.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
