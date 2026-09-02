@@ -22,6 +22,20 @@ test('boots with a rendered WebGL canvas', async ({ page }) => {
   expect(hasContext).toBe(true);
 });
 
+test('offers a control to restore the default camera view', async ({ page }) => {
+  const resetView = page.getByRole('button', { name: 'Reset default view' });
+  await expect(resetView).toBeVisible();
+
+  // The control is an overlay above the WebGL canvas and remains usable after the user
+  // has interacted with the scene.
+  await page.locator('canvas').dragTo(page.locator('canvas'), {
+    sourcePosition: { x: 120, y: 120 },
+    targetPosition: { x: 210, y: 170 },
+  });
+  await resetView.click();
+  await expect(resetView).toBeFocused();
+});
+
 test('shows the default scene and its readout', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Global root', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Body', exact: true })).toBeVisible();
