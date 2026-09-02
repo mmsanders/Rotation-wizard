@@ -80,16 +80,46 @@ function FrameForPanel({ targetY }: { targetY: number }) {
   return null;
 }
 
-export function SceneCanvas() {
+/** Return OrbitControls and the camera to the layout's deliberately framed starting pose. */
+function ResetView({
+  resetViewKey,
+  cameraPosition,
+  targetY,
+}: {
+  resetViewKey: number;
+  cameraPosition: [number, number, number];
+  targetY: number;
+}) {
+  const camera = useThree((state) => state.camera);
+  const controls = useThree((state) => state.controls) as
+    | { target: THREE.Vector3; update: () => void }
+    | null;
+  const invalidate = useThree((state) => state.invalidate);
+
+  useEffect(() => {
+    // Zero is the initial render, not a reset request. FrameForPanel establishes the
+    // initial target separately once OrbitControls is ready.
+    if (resetViewKey === 0 || !controls) return;
+    camera.position.set(...cameraPosition);
+    controls.target.set(0, targetY, 0);
+    controls.update();
+    invalidate();
+  }, [camera, cameraPosition, controls, invalidate, resetViewKey, targetY]);
+
+  return null;
+}
+
+export function SceneCanvas({ resetViewKey = 0 }: { resetViewKey?: number }) {
   const upAxis = useSceneStore((s) => s.conventions.upAxis);
   const mount = useMemo(() => mountQuaternion(upAxis), [upAxis]);
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   // The sheet covers the lower half of a phone, so start further back and aim below the
   // origin, putting the frames in the strip that stays visible.
   const targetY = isDesktop ? 0 : -1.6;
-  const cameraPosition: [number, number, number] = isDesktop
-    ? [6.2, 4.4, 7.5]
-    : [7.8, 5.6, 9.6];
+  const cameraPosition = useMemo<[number, number, number]>(
+    () => (isDesktop ? [6.2, 4.4, 7.5] : [7.8, 5.6, 9.6]),
+    [isDesktop],
+  );
 
   return (
     <Canvas
@@ -130,6 +160,11 @@ export function SceneCanvas() {
       />
 
       <FrameForPanel targetY={targetY} />
+      <ResetView
+        resetViewKey={resetViewKey}
+        cameraPosition={cameraPosition}
+        targetY={targetY}
+      />
       <InvalidateOnChange />
     </Canvas>
   );

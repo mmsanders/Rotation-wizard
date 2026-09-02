@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { SceneCanvas } from './scene/SceneCanvas';
 import { Panel } from './ui/Panel';
 import { ImportBanner } from './ui/ImportBanner';
@@ -14,11 +15,22 @@ import { describeSequence } from './math/conventions';
 export function App() {
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   const conventions = useSceneStore((s) => s.conventions);
+  const [viewReset, setViewReset] = useState(0);
 
   return (
     <div className={`app${isDesktop ? ' app--desktop' : ''}`}>
       <div className="app__scene">
-        <SceneCanvas />
+        <SceneCanvas resetViewKey={viewReset} />
+        <button
+          type="button"
+          className="view-reset"
+          aria-label="Reset default view"
+          title="Reset default view"
+          onClick={() => setViewReset((value) => value + 1)}
+        >
+          <span aria-hidden="true">↻</span>
+          <span>Reset view</span>
+        </button>
       </div>
 
       {!isDesktop && (

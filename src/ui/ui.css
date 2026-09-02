@@ -28,6 +28,50 @@
   touch-action: none;
 }
 
+.view-reset {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: rgba(20, 25, 35, 0.88);
+  color: var(--text-dim);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.3);
+  font-size: 12px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+
+.view-reset:hover {
+  border-color: var(--accent);
+  background: rgba(28, 35, 48, 0.94);
+  color: var(--text);
+}
+
+.view-reset:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.view-reset span[aria-hidden='true'] {
+  font-size: 18px;
+  line-height: 1;
+}
+
+@media (max-width: 779px) {
+  .view-reset {
+    top: calc(env(safe-area-inset-top) + 48px);
+    right: 12px;
+  }
+}
+
 .topbar {
   position: absolute;
   top: 0;
