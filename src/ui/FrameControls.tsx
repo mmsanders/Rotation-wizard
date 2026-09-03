@@ -32,6 +32,13 @@ const ORIENTATION_OPTIONS = [
   { value: 'quaternion', label: 'Quaternion' },
 ] as const;
 
+type QuaternionDraft = {
+  frameId: string;
+  values: Quat;
+  /** Store value produced by the last valid edit, used to detect external changes. */
+  lastCommitted: Quat;
+};
+
 /** Controls for the selected frame, plus what it currently reads as. */
 export function FrameControls() {
   const frames = useSceneStore((s) => s.frames);
@@ -52,7 +59,7 @@ export function FrameControls() {
    * produces the stored rotation, and abandoned the moment something else changes it.
    */
   const [draft, setDraft] = useState<Vec3 | null>(null);
-  const [quaternionDraft, setQuaternionDraft] = useState<Quat | null>(null);
+  const [quaternionDraft, setQuaternionDraft] = useState<QuaternionDraft | null>(null);
   const [orientationDefinition, setOrientationDefinition] = useState<'euler' | 'quaternion'>('euler');
 
   const frame = frames[selectedId];
@@ -85,18 +92,21 @@ export function FrameControls() {
     setLocalPosition(frame.id, next);
   };
 
-  const normalizedQuaternionDraft = quaternionDraft && normalizeQuat(quaternionDraft);
   const quaternionDraftMatchesStore =
-    normalizedQuaternionDraft !== null &&
-    quatsApproxEqual(normalizedQuaternionDraft, stored, 1e-9);
+    quaternionDraft?.frameId === frame.id &&
+    quatsApproxEqual(quaternionDraft.lastCommitted, stored, 1e-9);
   const quaternion: Quat =
-    quaternionDraftMatchesStore && quaternionDraft ? quaternionDraft : stored;
+    quaternionDraftMatchesStore && quaternionDraft ? quaternionDraft.values : stored;
 
   const setQuaternionComponent = (index: number, value: number) => {
     const next: Quat = [...quaternion] as Quat;
     next[index] = value;
     const normalized = normalizeQuat(next);
-    setQuaternionDraft(next);
+    setQuaternionDraft({
+      frameId: frame.id,
+      values: next,
+      lastCommitted: normalized ?? stored,
+    });
     if (normalized) setLocalQuaternion(frame.id, normalized);
   };
 
