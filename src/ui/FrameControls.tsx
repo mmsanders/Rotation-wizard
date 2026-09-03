@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { GLOBAL_FRAME_ID, type Vec3 } from '../types';
+import { GLOBAL_FRAME_ID, type Quat, type Vec3 } from '../types';
 import { useSceneStore } from '../store/useSceneStore';
 import {
   angleRange,
@@ -13,12 +13,24 @@ import {
   resolveWorldTransforms,
   wouldCreateCycle,
   IDENTITY_TRANSFORM,
+  normalizeQuat,
 } from '../math/transforms';
 import { AXIS_COLORS } from '../theme';
 import { NumberField } from './NumberField';
 import { Readout } from './Readout';
+import { Segmented } from './Segmented';
 
 const POSITION_AXES = ['X', 'Y', 'Z'] as const;
+const QUATERNION_COMPONENTS = [
+  { label: 'w', index: 3, color: undefined },
+  { label: 'x', index: 0, color: AXIS_COLORS.X },
+  { label: 'y', index: 1, color: AXIS_COLORS.Y },
+  { label: 'z', index: 2, color: AXIS_COLORS.Z },
+] as const;
+const ORIENTATION_OPTIONS = [
+  { value: 'euler', label: 'Euler sequence' },
+  { value: 'quaternion', label: 'Quaternion' },
+] as const;
 
 /** Controls for the selected frame, plus what it currently reads as. */
 export function FrameControls() {
@@ -40,6 +52,8 @@ export function FrameControls() {
    * produces the stored rotation, and abandoned the moment something else changes it.
    */
   const [draft, setDraft] = useState<Vec3 | null>(null);
+  const [quaternionDraft, setQuaternionDraft] = useState<Quat | null>(null);
+  const [orientationDefinition, setOrientationDefinition] = useState<'euler' | 'quaternion'>('euler');
 
   const frame = frames[selectedId];
   const world = useMemo(() => resolveWorldTransforms(frames), [frames]);
@@ -69,6 +83,21 @@ export function FrameControls() {
     const next: Vec3 = [...frame.localPosition] as Vec3;
     next[index] = value;
     setLocalPosition(frame.id, next);
+  };
+
+  const normalizedQuaternionDraft = quaternionDraft && normalizeQuat(quaternionDraft);
+  const quaternionDraftMatchesStore =
+    normalizedQuaternionDraft !== null &&
+    quatsApproxEqual(normalizedQuaternionDraft, stored, 1e-9);
+  const quaternion: Quat =
+    quaternionDraftMatchesStore && quaternionDraft ? quaternionDraft : stored;
+
+  const setQuaternionComponent = (index: number, value: number) => {
+    const next: Quat = [...quaternion] as Quat;
+    next[index] = value;
+    const normalized = normalizeQuat(next);
+    setQuaternionDraft(next);
+    if (normalized) setLocalQuaternion(frame.id, normalized);
   };
 
   const parentTransform = frame.parentId ? world[frame.parentId] : undefined;
@@ -138,26 +167,54 @@ export function FrameControls() {
             ))}
 
             <h4 className="card__section">Orientation relative to {parentName}</h4>
-            {slots.map((slot) => (
-              <NumberField
-                key={slot.axis}
-                label={slot.alias ? slot.alias : `Rotate ${slot.axis}`}
-                hint={slot.alias ? `${slot.step}. about ${slot.axis}` : `step ${slot.step}`}
-                value={euler[slot.index]}
-                onChange={(v) => setEuler(slot.index, v)}
-                min={range.min}
-                max={range.max}
-                step={conventions.angleUnit === 'deg' ? 1 : 0.01}
-                unit={unit}
-                color={AXIS_COLORS[slot.axis]}
-              />
-            ))}
+            <Segmented
+              label="Rotation definition"
+              value={orientationDefinition}
+              options={ORIENTATION_OPTIONS}
+              onChange={setOrientationDefinition}
+            />
+            {orientationDefinition === 'euler' ? (
+              slots.map((slot) => (
+                <NumberField
+                  key={slot.axis}
+                  label={slot.alias ? slot.alias : `Rotate ${slot.axis}`}
+                  hint={slot.alias ? `${slot.step}. about ${slot.axis}` : `step ${slot.step}`}
+                  value={euler[slot.index]}
+                  onChange={(v) => setEuler(slot.index, v)}
+                  min={range.min}
+                  max={range.max}
+                  step={conventions.angleUnit === 'deg' ? 1 : 0.01}
+                  unit={unit}
+                  color={AXIS_COLORS[slot.axis]}
+                />
+              ))
+            ) : (
+              <>
+                {QUATERNION_COMPONENTS.map((component) => (
+                  <NumberField
+                    key={component.label}
+                    label={component.label}
+                    value={quaternion[component.index]}
+                    onChange={(value) => setQuaternionComponent(component.index, value)}
+                    min={-1}
+                    max={1}
+                    step={0.01}
+                    {...(component.color ? { color: component.color } : {})}
+                  />
+                ))}
+                <p className="hint">
+                  Enter components as w, x, y, z. They are normalised automatically; an
+                  all-zero quaternion is ignored because it cannot describe a rotation.
+                </p>
+              </>
+            )}
 
             <button
               type="button"
               className="btn"
               onClick={() => {
                 setDraft(null);
+                setQuaternionDraft(null);
                 resetFrame(frame.id);
               }}
             >

@@ -23,6 +23,8 @@ So none of that is hardcoded here:
 - **Euler sequence** — all six Tait-Bryan orders, applied **intrinsically** (about the
   new, already-rotated axes) or **extrinsically** (about the fixed world axes). Intrinsic
   Z-Y-X is labelled as the aerospace yaw-pitch-roll it is.
+- **Rotation definition** — enter each frame orientation as either that Euler sequence or
+  directly as a w-x-y-z quaternion. Entered quaternion components are normalised for you.
 - **Angle units** — degrees or radians.
 
 Two guarantees follow from how this is built:

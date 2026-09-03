@@ -12,6 +12,7 @@ import {
 import { DEFAULT_CONVENTIONS, quatFromEuler } from '../math/conventions';
 import {
   IDENTITY_TRANSFORM,
+  normalizeQuat,
   relativeTransform,
   resolveWorldTransforms,
   wouldCreateCycle,
@@ -333,8 +334,9 @@ export const useSceneStore = create<SceneState>()(
       setLocalQuaternion: (id, localQuaternion) =>
         set((state) => {
           const frame = state.frames[id];
-          if (!frame) return state;
-          return { frames: { ...state.frames, [id]: { ...frame, localQuaternion } } };
+          const normalized = normalizeQuat(localQuaternion);
+          if (!frame || !normalized) return state;
+          return { frames: { ...state.frames, [id]: { ...frame, localQuaternion: normalized } } };
         }),
 
       toggleVisible: (id) =>
