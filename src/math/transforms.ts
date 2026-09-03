@@ -38,6 +38,13 @@ export function canonicalizeQuat(q: Quat): Quat {
   return q[3] < 0 ? [-q[0], -q[1], -q[2], -q[3]] : [q[0], q[1], q[2], q[3]];
 }
 
+/** Return the unit quaternion represented by four user-entered components. */
+export function normalizeQuat(q: Quat): Quat | null {
+  const norm = Math.hypot(...q);
+  if (!Number.isFinite(norm) || norm < 1e-9) return null;
+  return q.map((component) => component / norm) as Quat;
+}
+
 // ---------------------------------------------------------------------------
 // Frame tree
 // ---------------------------------------------------------------------------

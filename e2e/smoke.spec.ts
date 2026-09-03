@@ -59,6 +59,38 @@ test('editing an angle updates the quaternion readout', async ({ page }) => {
   expect(Number(after)).toBeCloseTo(Math.SQRT1_2, 4);
 });
 
+test('defines a frame orientation with quaternion components', async ({ page }) => {
+  await page.getByRole('button', { name: 'Quaternion', exact: true }).click();
+
+  await expect(page.getByLabel('w', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('x', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('yaw', { exact: true })).toHaveCount(0);
+
+  // Set both values explicitly: the seeded Body frame is not the identity rotation.
+  await page.getByLabel('w', { exact: true }).fill('1');
+  await page.getByLabel('w', { exact: true }).press('Enter');
+  await page.getByLabel('z', { exact: true }).fill('1');
+  await page.getByLabel('z', { exact: true }).press('Enter');
+
+  const readValue = async (name: string) =>
+    Number((await page.getByTitle(`Copy ${name}`).first().innerText()).split('\n').pop());
+  expect(await readValue('z')).toBeCloseTo(1 / Math.sqrt(2), 5);
+  expect(await readValue('w')).toBeCloseTo(1 / Math.sqrt(2), 5);
+
+  // A zero intermediate draft must remain editable so 180-degree quaternions can be
+  // entered one component at a time.
+  await page.getByRole('button', { name: 'Reset to Global', exact: true }).click();
+  await page.getByLabel('w', { exact: true }).fill('0');
+  await page.getByLabel('w', { exact: true }).press('Enter');
+  await page.getByLabel('x', { exact: true }).fill('1');
+  await page.getByLabel('x', { exact: true }).press('Enter');
+  expect(await readValue('x')).toBeCloseTo(1, 5);
+  expect(await readValue('w')).toBeCloseTo(0, 5);
+
+  await page.getByRole('button', { name: 'Euler sequence', exact: true }).click();
+  await expect(page.getByLabel('yaw', { exact: true })).toBeVisible();
+});
+
 test('warns at gimbal lock instead of quietly printing an ambiguous triple', async ({ page }) => {
   const pitch = page.getByLabel('pitch', { exact: true });
   await pitch.fill('90');

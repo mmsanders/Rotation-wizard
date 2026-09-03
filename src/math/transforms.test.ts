@@ -5,6 +5,7 @@ import {
   applyQuat,
   axisAngleOf,
   canonicalizeQuat,
+  normalizeQuat,
   relativeTransform,
   resolveWorldTransforms,
   rotationMatrixOf,
@@ -44,6 +45,19 @@ describe('canonicalizeQuat', () => {
 
   it('leaves an already-canonical quaternion alone', () => {
     expect(canonicalizeQuat([0, 0, 0, 1])).toEqual([0, 0, 0, 1]);
+  });
+});
+
+describe('normalizeQuat', () => {
+  it('normalises user-entered components without changing their rotation', () => {
+    const normalized = normalizeQuat([0, 0, 2, 2]);
+    expect(normalized).not.toBeNull();
+    expect(normalized?.[2]).toBeCloseTo(Math.SQRT1_2, 12);
+    expect(normalized?.[3]).toBeCloseTo(Math.SQRT1_2, 12);
+  });
+
+  it('rejects the all-zero quaternion', () => {
+    expect(normalizeQuat([0, 0, 0, 0])).toBeNull();
   });
 });
 
